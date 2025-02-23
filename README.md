@@ -1,4 +1,4 @@
-# How does winter temperature affect electricity consumption patterns compared to summer temperatures?
+# HOW DOES WINTER TEMPERATURE AFFECT ELECTRICITY CONSUMPTION PATTERNS COMPARED TO SUMMER TEMPERATURE?
 
 Date: 03/11/2024
 
