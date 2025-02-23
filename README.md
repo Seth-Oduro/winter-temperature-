@@ -155,6 +155,696 @@ Conversely, in summer, while Hinton/Edson maintains high consumption, areas like
 Both seasons demonstrate strong correlations between temperature and electricity consumption, with R-squared values of 0.958 for winter and 0.982 for summer, highlighting the substantial impact of seasonal temperature variations on energy demand.
 
 
+# APPENDIX
+
+
+[Uploading Assignment-3.Rm---
+title: "Assignment_3"
+author: "Seth Oduro"
+date: "2024-10-31"
+output: html_document
+---
+
+#    How does winter temperature affect electricity consumption patterns compared to summer temperatures?
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Loading Libraries
+```{r}
+library(readr)
+library(sf)
+library(lubridate)
+library(stargazer)
+library(ggplot2)
+library(here)
+library(readxl)
+library(janitor)
+library(tidyverse)
+library(dplyr)
+here()
+```
+
+## Importing dictionary, population, electricity and AESO planning Data
+```{r}
+# Import data
+dictionary <- read_csv(here("data", "dictionary.csv"))
+population <- read_csv(here("data", "population.csv"))
+electricity <- read.csv(here("data", "electricity_district.csv"))
+planning_areas <- st_read(here("data", "shape", "AESO_Planning_Areas.shp"))
+```
+
+
+## Preparation to plot Shape Visualization
+```{r}
+planning_areas <- st_read(here("data", "shape/AESO_Planning_Areas.shp")) |>
+  mutate(Area_ID = as.numeric(Area_ID))
+
+head(planning_areas)
+```
+
+```{r}
+# Plotting the plot
+map_base <- ggplot(planning_areas) +
+  geom_sf() +    
+  labs(title = "Alberta") 
+map_base
+```
+
+```{r}
+AESO_Planning_Areas <- st_read("data/shape/AESO_Planning_Areas.shp")
+```
+
+```{r}
+districts <- st_drop_geometry(AESO_Planning_Areas)
+
+selected_districts <- c("Lethbridge", "Athabasca / Lac La Biche", "Vegreville", "High Level", "Alliance / Battle River", "Brooks", "Grande Prairie", "Wabamun", "Hinton / Edson")
+districts <- districts %>%
+  filter(NAME %in% selected_districts)
+ 
+print(districts)
+```
+
+```{r}
+planning_areas$Area_ID <- as.character(planning_areas$Area_ID)
+```
+
+
+```{r}
+# combining the planning area data to the district data
+planning_areas <- planning_areas %>%
+  left_join(districts, by = "Area_ID")
+head(planning_areas)
+
+# Plotting the map for the planning area
+alberta_complete <- ggplot(planning_areas) +
+  geom_sf(fill = "lightblue", color = "black") +    
+  geom_sf_text(data = st_centroid(planning_areas),             
+               aes(label = Area_ID),                   
+               color = "darkred", size = 3) +       
+  labs(title = "Alberta")
+
+alberta_complete
+
+```
+
+
+```{r}
+# Mutating the district Area_ID
+districts <- districts |>
+  mutate(id_label = Area_ID) |>
+  select(Area_ID, id_label)
+
+head(districts)
+```
+
+```{r}
+# Adding the planning data to the district
+planning_areas_joined <- planning_areas |>
+  left_join(districts, by = "Area_ID") |>
+  mutate(id_label = as.character(id_label)) |>
+  mutate(id_label = ifelse(is.na(id_label), "", id_label))
+head(planning_areas_joined)
+
+st_centroid(planning_areas_joined)
+```
+```{r}
+# Selecting the 9 regions for Alberta
+alberta_dist <- ggplot(planning_areas_joined) +
+  geom_sf(fill = "lightblue", color = "black") +    
+  geom_sf_text(data = st_centroid(planning_areas_joined),             
+               aes(label = id_label),                   
+               color = "darkred", size = 3) +       
+  labs(title = "Alberta ") 
+
+alberta_dist
+```
+
+## Data Preparation for the Dictionary, Population, and Electricity Data 
+```{r}
+head(dictionary)
+```
+
+```{r}
+head(population)
+```
+
+
+```{r}
+head(electricity)
+```
+
+
+```{r}
+# Join population data with dictionary
+population <- population %>%
+  inner_join(dictionary, by = "code") %>%
+  group_by(Area_ID, year) %>%
+  summarise(total_pop = sum(population, na.rm = TRUE)) %>%
+  arrange(Area_ID, year)
+```
+
+```{r}
+head(population)
+```
+
+```{r}
+# Convert datetime column to datetime object
+electricity$datetime <- ymd_hms(electricity$datetime)
+
+# Pivot electricity data to long format
+electricity_long <- electricity %>%
+  pivot_longer(cols = starts_with("AREA"), names_to = "Area_ID", values_to = "elect_use") %>%
+  mutate(Area_ID = as.numeric(gsub("AREA", "", Area_ID)),
+         year = year(datetime))
+
+head(electricity_long)
+```
+
+
+
+
+```{r}
+# Join electricity data with population data
+combined_data <- electricity_long %>%
+  inner_join(population, by = c("Area_ID", "year")) %>%
+  mutate(consumption_per_capita = elect_use / total_pop)
+
+head(combined_data)
+
+
+```
+
+
+
+```{r}
+# Joining the planning area data with the electricity combined data
+planning_areas_joined <- planning_areas_joined %>%
+  mutate(Area_ID = as.character(Area_ID))
+
+combined_data <- combined_data %>%
+  mutate(Area_ID = as.character(Area_ID))
+
+
+shape_viz <- planning_areas_joined |>
+  left_join(combined_data, by = "Area_ID")
+head(shape_viz)
+```
+
+## Plotting consumption per capita for the nine regions using the whole year round
+```{r}
+ggplot() +
+  geom_sf(data = shape_viz,
+          aes(fill = ifelse(consumption_per_capita > 0, consumption_per_capita, NA))) +
+  # scale_fill_viridis_c(na.value = "gray90") +      
+  labs(title = "Electricity consumption per capita",
+       fill = "Consumption") 
+```
+
+
+```{r}
+elect_viz_shape_whole <- ggplot() +
+  geom_sf(data = shape_viz,
+          aes(fill = ifelse(consumption_per_capita > 0, consumption_per_capita, NA))) +
+  scale_fill_viridis_c(na.value = "gray90") +  
+  geom_sf_text(data = st_centroid(planning_areas_joined),             
+               aes(label = id_label),                   
+               color = "white", size = 3) +
+  labs(title = "Electricity consumption per capita",
+       fill = "Consumption")
+
+print(elect_viz_shape_whole)
+```
+
+```{r}
+# Saving Electricity Consumption Per Capita for the 9 Regions using the whole data
+#ggsave("sf_viz_whole.png", plot = elect_viz_shape_whole, width = 8, height = 6)
+```
+
+
+
+## Importing and Preparing Temperature Data
+```{r}
+# Importing the temperature data
+
+temp_files <- list.files(here("data", "temperature"), full.names = TRUE, pattern = "*.csv")
+temperature_data <- map_df(temp_files, read_csv) %>%
+  mutate(year = year(datetime))
+
+
+```
+
+```{r}
+head(temperature_data)
+```
+
+```{r}
+# Changing the date to an appropriate date
+temperature <- temperature_data %>%
+  mutate(datetime = as.Date(datetime, format = "%Y-%m-%d"))
+
+head(temperature)
+```
+
+
+
+
+```{r}
+# Combining temperature data with the planning area data
+temperature_data <- temperature_data %>%
+  mutate(Area_ID = as.character(Area_ID))
+
+shape_temp <- planning_areas_joined %>%
+  left_join(temperature_data, by = "Area_ID")
+
+
+head(shape_temp)
+```
+
+
+## Plotting the map for temperature in the nine regions for the whole data
+```{r}
+ggplot() +
+  geom_sf(data = shape_temp,
+          aes(fill = ifelse(temp_c, temp_c, NA))) +
+  # scale_fill_viridis_c(na.value = "gray90") +      
+  labs(title = "Temperature",
+       fill = "Fahrenheit") 
+```
+
+
+
+```{r}
+temp_viz_shape_whole <- ggplot() +
+  geom_sf(data = shape_temp,
+          aes(fill = ifelse(temp_c , temp_c, NA))) +
+  scale_fill_viridis_c(na.value = "gray90") +  
+  geom_sf_text(data = st_centroid(planning_areas_joined),             
+               aes(label = id_label),                   
+               color = "white", size = 3) +
+  labs(title = "Temperature",
+       fill = "degree Celsius (°C)")
+
+print(temp_viz_shape_whole)
+```
+
+
+```{r}
+# Saving Temperature for the 9 Regions using the whole data
+# ggsave("sf_viz_temp_whole.png", plot = temp_viz_shape_whole, width = 8, height = 6)
+```
+
+
+# REDUCING DATA FOCUS FOR ONLY DATA DURING WINTER
+
+```{r}
+# reducing the combined data to only winter (dec to feb)
+combined_data_winter <- combined_data %>%
+  filter(month(datetime) %in% c(12, 1, 2))
+
+combined_data_winter <- combined_data_winter %>%
+  mutate(Area_ID = as.numeric(Area_ID))
+
+
+head(combined_data_winter)
+```
+
+```{r}
+# Reducing temperature data for the winter months (e.g., December to February):
+
+temperature_data_winter <- temperature_data %>%
+  filter(month(datetime) %in% c(12, 1, 2))
+
+temperature_data_winter <- temperature_data_winter %>%
+  mutate(Area_ID = as.numeric(Area_ID))
+
+
+head(temperature_data_winter)
+```
+
+
+```{r}
+# Join temperature data with combined data
+winter_data <- combined_data_winter %>%
+    left_join(temperature_data_winter, by = c("Area_ID", "year"))
+
+head(winter_data)
+```
+
+```{r}
+# Combining Temperature with the planning area data for winter
+temperature_data_winter <- temperature_data_winter %>%
+  mutate(Area_ID = as.character(Area_ID))
+
+
+shape_viz_temp_winter <- planning_areas_joined %>%
+  left_join(temperature_data_winter, by = "Area_ID")
+head(shape_viz_temp_winter)
+```
+
+
+```{r}
+# Combining Temperature with the planning area data for winter
+combined_data_winter <- combined_data_winter %>%
+  mutate(Area_ID = as.character(Area_ID))
+
+
+shape_viz_comb_winter <- planning_areas_joined %>%
+  left_join(combined_data_winter, by = "Area_ID")
+head(shape_viz_comb_winter)
+```
+
+## Plotting The Per Capita For The 9 Regions For Winter (December to February)
+```{r}
+ggplot() +
+  geom_sf(data = shape_viz_comb_winter,
+          aes(fill = ifelse(consumption_per_capita > 0, consumption_per_capita, NA))) +
+  # scale_fill_viridis_c(na.value = "gray90") +      
+  labs(title = "Electricity consumption per capita during winter",
+       fill = "Consumption") 
+```
+
+```{r}
+elect_shape_viz_winter <- ggplot() +
+  geom_sf(data = shape_viz_comb_winter,
+          aes(fill = ifelse(consumption_per_capita > 0, consumption_per_capita, NA))) +
+  scale_fill_viridis_c(na.value = "gray90") +  
+  geom_sf_text(data = st_centroid(planning_areas_joined),             
+               aes(label = id_label),                   
+               color = "white", size = 3) +
+  labs(title = "Electricity consumption per capita during winter",
+       fill = "Consumption")
+
+print(elect_shape_viz_winter)
+```
+
+```{r}
+# Saving the viz
+#ggsave("elect_sf_viz_winter.png", plot = elect_shape_viz_winter, width = 8, height = 6)
+```
+
+
+## Plotting the Shape Visualization for Temperature for Winter
+```{r}
+ggplot() +
+  geom_sf(data = shape_viz_temp_winter,
+          aes(fill = ifelse(temp_c, temp_c, NA))) +
+  # scale_fill_viridis_c(na.value = "gray90") +      
+  labs(title = "Temperature",
+       fill = "Degree Celsius (°C)") 
+```
+
+
+```{r}
+temp_shape_viz_winter <- ggplot() +
+  geom_sf(data = shape_viz_temp_winter,
+          aes(fill = ifelse(temp_c , temp_c, NA))) +
+  scale_fill_viridis_c(na.value = "gray90") +  
+  geom_sf_text(data = st_centroid(planning_areas_joined),             
+               aes(label = id_label),                   
+               color = "white", size = 3) +
+  labs(title = "Temperature during Winter",
+       fill = "Degree Celsius (°C)")
+
+print(temp_shape_viz_winter)
+```
+
+```{r}
+# Saving the Shape Visualization for Temperature in 9 regions for Winter
+# ggsave("temp_sf_viz_winter.png", plot = temp_shape_viz_winter, width = 8, height = 6)
+```
+
+
+## Regression Analysis for Winter
+```{r}
+# Add a day column by extracting the day from the datetime column:
+winter_data <- winter_data %>%
+  mutate(day = day(datetime.x))
+
+head(winter_data)
+```
+
+```{r}
+# Group by Area_ID, year, and day, then calculate the minimum temperature and sum of electricity consumed:
+
+winter_summary <- winter_data %>%
+  group_by(Area_ID, year = year(datetime.x), day) %>%
+  summarise(
+    min_temp = min(temp_c),
+    total_electricity = sum(elect_use)
+  )
+```
+
+
+```{r}
+head(winter_summary)
+```
+
+
+```{r}
+# Regression total electricity on temperature
+model_winter <- lm(total_electricity ~ min_temp + factor(Area_ID), data = winter_summary)
+summary(model_winter)
+```
+
+```{r}
+# Saving with Stargazer
+# stargazer(model_winter, type = "html", title = "Regression Results  on Total Electricity and Temperature (Winter)", align = TRUE,
+  #        column.labels = c("Total Electricity"),
+   #       out = "Regression(Winter).html")
+```
+
+
+## Plotting Heatmap for only 2018 for Winter Season
+```{r}
+# Filter the data for the year 2018
+winter_data_2018 <- winter_data %>% filter(year == 2018)
+
+
+```
+
+```{r}
+head(winter_data_2018)
+```
+
+
+```{r}
+# Plotting thr heatmap for the winter season in 2018
+library(ggplot2)
+
+heatmap_winter <- ggplot(winter_data_2018, aes(x = temp_c, y = elect_use)) +
+  geom_bin2d() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(title = "Heatmap of Temperature vs Electricity Consumption",
+       x = "Temperature (°C)",
+       y = "Electricity Consumption")
+
+print(heatmap_winter)
+```
+
+
+
+```{r}
+# Saving the Heatmap for Temperature and Electricity Consumption(Winter)
+# ggsave("heatmap_winter.png", plot = heatmap_winter , width = 8, height = 6)
+```
+
+
+# REDUCING DATA FOCUS FOR ONLY DATA DURING SUMMER
+
+```{r}
+# reducing the combined data to only Summer season
+combined_data_summer <- combined_data %>%
+  filter(month(datetime) %in% c(6, 7, 8))
+
+combined_data_summer <- combined_data_summer %>%
+  mutate(Area_ID = as.numeric(Area_ID))
+
+
+head(combined_data_summer)
+```
+
+
+```{r}
+# Reducing temperature data for the summer season
+
+temperature_data_summer <- temperature_data %>%
+  filter(month(datetime) %in% c(6, 7, 8))
+
+temperature_data_summer <- temperature_data_summer %>%
+  mutate(Area_ID = as.numeric(Area_ID))
+
+
+head(temperature_data_summer)
+```
+
+
+```{r}
+# Join temperature data with combined data for summer seeason
+summer_data <- combined_data_summer %>%
+    left_join(temperature_data_summer, by = c("Area_ID", "year"))
+
+head(summer_data)
+```
+
+```{r}
+# Combining Temperature with the planning area data for summer season
+temperature_data_summer <- temperature_data_summer %>%
+  mutate(Area_ID = as.character(Area_ID))
+
+
+shape_viz_temp_summer <- planning_areas_joined %>%
+  left_join(temperature_data_summer, by = "Area_ID")
+
+head(shape_viz_temp_summer)
+```
+
+```{r}
+# Combining electricity combined data with the 9 planning area data for Summer season
+combined_data_summer <- combined_data_summer %>%
+  mutate(Area_ID = as.character(Area_ID))
+
+
+shape_viz_comb_summer <- planning_areas_joined %>%
+  left_join(combined_data_summer, by = "Area_ID")
+
+head(shape_viz_comb_summer)
+```
+
+## Plotting the Shape Visualization for consumption per capita for the Summer season
+```{r}
+ggplot() +
+  geom_sf(data = shape_viz_comb_summer,
+          aes(fill = ifelse(consumption_per_capita > 0, consumption_per_capita, NA))) +
+  # scale_fill_viridis_c(na.value = "gray90") +      
+  labs(title = "Electricity consumption per capita during Summer",
+       fill = "Consumption") 
+```
+
+
+```{r}
+elect_shape_viz_summer <- ggplot() +
+  geom_sf(data = shape_viz_comb_summer,
+          aes(fill = ifelse(consumption_per_capita > 0, consumption_per_capita, NA))) +
+  scale_fill_viridis_c(na.value = "gray90") +  
+  geom_sf_text(data = st_centroid(planning_areas_joined),             
+               aes(label = id_label),                   
+               color = "white", size = 3) +
+  labs(title = "Electricity consumption per capita during Summer",
+       fill = "Consumption")
+
+print(elect_shape_viz_summer)
+```
+
+```{r}
+# Saving the shape vizualization for the 9 regions for Summer season
+# ggsave("elect_sf_viz_summer.png", plot = elect_shape_viz_summer, width = 8, height = 6)
+```
+
+
+## Plotting the Shape Visualization for Temperature for Summer Season
+```{r}
+ggplot() +
+  geom_sf(data = shape_viz_temp_summer,
+          aes(fill = ifelse(temp_c, temp_c, NA))) +
+  # scale_fill_viridis_c(na.value = "gray90") +      
+  labs(title = "Temperature",
+       fill = "Fahrenheit") 
+```
+
+
+```{r}
+temp_shape_viz_summer <- ggplot() +
+  geom_sf(data = shape_viz_temp_summer,
+          aes(fill = ifelse(temp_c , temp_c, NA))) +
+  scale_fill_viridis_c(na.value = "gray90") +  
+  geom_sf_text(data = st_centroid(planning_areas_joined),             
+               aes(label = id_label),                   
+               color = "white", size = 3) +
+  labs(title = "Temperature during Summer",
+       fill = "degree Celsius (°C)")
+
+print(temp_shape_viz_summer)
+```
+
+
+```{r}
+# Saving the shape visualization for the 9 regions for summer
+# ggsave("temp_sf_viz_summer.png", plot = temp_shape_viz_summer, width = 8, height = 6)
+```
+
+
+## Plotting the Heatmap for the Summer season
+```{r}
+# Filter the data for the year 2018 for the summer season
+summer_data_2018 <- summer_data %>% filter(year == 2018)
+```
+
+```{r}
+head(summer_data_2018)
+```
+
+
+```{r}
+heatmap_summer <- ggplot(summer_data_2018, aes(x = temp_c, y = elect_use)) +
+  geom_bin2d() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(title = "Heatmap of Temperature vs Electricity Consumption for Summer",
+       x = "Temperature (°C)",
+       y = "Electricity Consumption")
+```
+
+```{r}
+print(heatmap_summer)
+```
+
+
+```{r}
+# Saving the heatmap plot
+#ggsave("heatmap_summer.png", plot = heatmap_summer, width = 8, height = 6)
+```
+
+
+## Regression Results for Summer Season
+```{r}
+# Add a day column by extracting the day from the datetime column:
+summer_data <- summer_data %>%
+  mutate(day = day(datetime.x))
+
+head(summer_data)
+```
+
+
+```{r}
+# Group by Area_ID, year, and day, then calculate the maximume temperature and sum of electricity consumed for the Summer Season
+
+summer_summary <- summer_data %>%
+  group_by(Area_ID, year = year(datetime.x), day) %>%
+  summarise(
+    max_temp = max(temp_c),
+    total_electricity = sum(elect_use)
+  )
+```
+```{r}
+head(summer_summary)
+```
+
+## Regression and Results for Summer Season
+```{r}
+model_summer <- lm(total_electricity ~ max_temp + factor(Area_ID), data = summer_summary)
+summary(model_summer)
+```
+
+
+```{r}
+# # Saving Regression results for Summer
+#stargazer(model_summer, type = "html", title = "Regression Results  on Total Electricity and Temperature (Summer)", align = TRUE,
+      #    column.labels = c("Total Electricity"),
+      #    out = "Regression(Summer).html")
+```d…]()
 
 
 
