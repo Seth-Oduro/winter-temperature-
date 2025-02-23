@@ -140,7 +140,20 @@ The heatmap visually highlights a strong positive correlation between temperatur
 Interestingly, the most frequent occurrences of high electricity consumption align with moderate to elevated temperatures, reinforcing the direct relationship between temperature and energy use.
 
 
-## EGRESSING ANALYSIS FOR TEMPERATURE AND TOTAL ELECTRICITY 
+## REGRESSING ANALYSIS FOR TEMPERATURE AND TOTAL ELECTRICITY 
+
+![image](https://github.com/user-attachments/assets/6da8af59-fced-4829-aabb-244ca2240452)
+
+## Results Analysis
+The regression analysis explores the relationship between total electricity consumption and maximum temperature during summer, incorporating area-specific factors. The maximum temperature (max_temp) has a significant positive effect, with each unit increase leading to an increase in electricity consumption by approximately 78,671 units. This highlights the substantial influence of rising temperatures on energy demand for cooling. Area-specific factors further illustrate significant variability: regions like Grande Prairie (Area_ID20), Athabasca / Lac La Biche (Area_ID27), Hinton / Edson (Area_ID29), Waban(Area_ID40), Brooks (Area_ID47), and Lethbridge (Area_ID54) exhibit markedly higher electricity consumption, possibly due to higher population densities or industrial activities, while Alliance / Battle River (Area_ID36) shows a significant decrease, indicating regional efficiency or lower energy needs. The model’s high R-squared value of 0.982 underscores its robustness, explaining 98.2% of the variance in electricity consumption, confirming the significant impact of both temperature and regional characteristics on electricity usage. 
+
+
+# Conclusion
+
+Based on the analysis of electricity consumption patterns in Alberta during winter and summer seasons, several key conclusions can be drawn. In winter, the regions of Hinton/Edson, Grand Prairie, and Brooks show the highest electricity consumption per capita, likely due to increased heating demands. The regression analysis for winter reveals a significant positive relationship between colder temperatures and electricity usage, with a coefficient of 116,361.1 for minimum temperature.
+Conversely, in summer, while Hinton/Edson maintains high consumption, areas like High Level show increased usage, due to cooling needs. The summer regression analysis indicates that each unit increase in maximum temperature leads to an increase in electricity consumption by approximately 78,671 units.
+Both seasons demonstrate strong correlations between temperature and electricity consumption, with R-squared values of 0.958 for winter and 0.982 for summer, highlighting the substantial impact of seasonal temperature variations on energy demand.
+
 
 
 
