@@ -157,6 +157,10 @@ Both seasons demonstrate strong correlations between temperature and electricity
 
 # APPENDIX
 
+## DATA 
+[studentData.zip](https://github.com/user-attachments/files/18934111/studentData.zip)
+
+## CODES
 
 [Uploading Assignment-3.Rm---
 title: "Assignment_3"
