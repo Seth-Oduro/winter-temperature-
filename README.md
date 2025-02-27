@@ -13,10 +13,14 @@ Climate change can exacerbate this relationship, particularly in regions already
 Understanding this relationship is crucial for energy policy and infrastructure planning. It helps in designing strategies to manage peak demand periods and ensure a reliable electricity supply. Additionally, promoting energy efficiency measures can mitigate the impact of temperature fluctuations on electricity consumption.
 
 
-# Research questions
+# Research Objective
 
 How do winter and summer temperatures affect electricity consumption differently of nine different regions in Alberta?
 
+## Research Questions
+    To analyze the relationship between temperature variations and electricity consumption patterns across nine regions in Alberta during the winter and summer seasons.
+    To identify critical temperature thresholds that significantly impact electricity demand for heating in winter and cooling in summer.
+    To assess regional differences in electricity consumption and explore the influence of regional characteristics (e.g., population, industrial activity) on energy usage.
 
 # Data
 
